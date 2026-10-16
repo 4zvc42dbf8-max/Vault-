@@ -36,6 +36,8 @@ header h1{font-size:20px;font-weight:600}
 .hidden{display:none}
 .tx{display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border)}
 .tx:last-child{border:none}
+.tx{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:pan-y;transition:background .15s;border-radius:8px}
+.tx.press{background:rgba(255,255,255,.12)}
 .curve{height:8px;background:rgba(255,255,255,.08);border-radius:4px;margin:10px 0;overflow:hidden}
 .curve-fill{height:100%;background:var(--accent);border-radius:4px;transition:width .3s}
 .fab{position:fixed;bottom:calc(70px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;border:none;font-size:26px;color:#fff;z-index:90}
@@ -116,7 +118,7 @@ html.covered:not(.locked) #pv-lock>*{visibility:hidden}
       <button class="btn" style="width:auto;padding:12px 16px;margin:0" onclick="setBudget('personal')">Set</button>
     </div>
   </div>
-  <div class="card"><div class="lbl">Activity</div><div id="p-list"></div></div>
+  <div class="card"><div class="lbl">Activity · hold to edit</div><div id="p-list"></div></div>
 </section>
 
 <section id="bank" class="hidden">
@@ -127,7 +129,7 @@ html.covered:not(.locked) #pv-lock>*{visibility:hidden}
       <button class="btn" style="width:auto;padding:12px 16px;margin:0" onclick="setBudget('bank')">Set</button>
     </div>
   </div>
-  <div class="card"><div class="lbl">Activity</div><div id="b-list"></div></div>
+  <div class="card"><div class="lbl">Activity · hold to edit</div><div id="b-list"></div></div>
 </section>
 
 </div>
@@ -143,6 +145,19 @@ html.covered:not(.locked) #pv-lock>*{visibility:hidden}
     <select id="m-rec"><option value="0">One-time</option><option value="1">Recurrent</option></select>
     <button class="btn" style="background:var(--accent);color:#fff;border:none" onclick="saveTx()">Save</button>
     <button class="btn" onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<div id="emodal" class="modal" onclick="if(event.target.id==='emodal')closeEdit()">
+  <div class="modal-box">
+    <div class="lbl">Edit activity</div>
+    <select id="e-type"><option value="plus">Gain (+)</option><option value="minus">Spending (−)</option></select>
+    <input id="e-amt" type="number" placeholder="Amount" step="0.01" inputmode="decimal">
+    <input id="e-reason" placeholder="Reason">
+    <select id="e-rec"><option value="0">One-time</option><option value="1">Recurrent</option></select>
+    <button class="btn" style="background:var(--accent);color:#fff;border:none" onclick="saveEdit()">Save</button>
+    <button class="btn" style="color:var(--red)" onclick="delTx()">Delete</button>
+    <button class="btn" onclick="closeEdit()">Cancel</button>
   </div>
 </div>
 
@@ -214,7 +229,7 @@ function render(){
     document.getElementById(pre + '-info').textContent = `Budget ${fmt(d.budget)} · Spent ${fmt(spent)}`;
     const input = document.getElementById(pre + '-budget-input');
     if (input) input.placeholder = 'Budget: ' + fmt(d.budget);
-    document.getElementById(pre+'-list').innerHTML=d.tx.slice().reverse().map(t=>`<div class="tx"><div>${t.r}${t.rec?' · rec':''}</div><div class="${t.a>=0?'green':'red'}">${t.a>=0?'+':'−'}${fmt(Math.abs(t.a))}</div></div>`).join('')||'<div class="sub">No activity</div>';
+    document.getElementById(pre+'-list').innerHTML=d.tx.map((t,i)=>({t,i})).reverse().map(({t,i})=>`<div class="tx" data-c="${c}" data-i="${i}"><div>${esc(t.r)}${t.rec?' · rec':''}</div><div class="${t.a>=0?'green':'red'}">${t.a>=0?'+':'−'}${fmt(Math.abs(t.a))}</div></div>`).join('')||'<div class="sub">No activity</div>';
   });
 }
 
@@ -259,6 +274,62 @@ function setBudget(c) {
   render();
   alert('Budget set to €' + num.toFixed(2));
 }
+function esc(x){return String(x).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+
+/* ---- long-press to edit an activity ---- */
+let editRef=null;
+function openEdit(c,i){
+  const t=data[c]&&data[c].tx[i]; if(!t)return;
+  editRef={c,i};
+  document.getElementById('e-type').value=t.a>=0?'plus':'minus';
+  document.getElementById('e-amt').value=Math.abs(t.a);
+  document.getElementById('e-reason').value=t.r;
+  document.getElementById('e-rec').value=t.rec?'1':'0';
+  const m=document.getElementById('emodal'); m.classList.add('show'); m.style.display='flex';
+}
+function closeEdit(){
+  const m=document.getElementById('emodal'); m.classList.remove('show'); m.style.display='none'; editRef=null;
+}
+function saveEdit(){
+  if(!editRef)return;
+  const amt=Math.abs(parseFloat(document.getElementById('e-amt').value)||0);
+  if(!amt){alert('Enter an amount');return;}
+  const t=data[editRef.c].tx[editRef.i]; if(!t){closeEdit();return;}
+  const signed=document.getElementById('e-type').value==='plus'?amt:-amt;
+  data[editRef.c].bal+=signed-t.a;
+  t.a=signed;
+  t.r=document.getElementById('e-reason').value.trim()||(signed>0?'Gain':'Spending');
+  t.rec=document.getElementById('e-rec').value==='1';
+  persist(); closeEdit(); render();
+}
+function delTx(){
+  if(!editRef)return;
+  if(!confirm('Delete this activity? The balance will be adjusted.'))return;
+  const d=data[editRef.c], t=d.tx[editRef.i];
+  if(t){d.bal-=t.a; d.tx.splice(editRef.i,1);}
+  persist(); closeEdit(); render();
+}
+(function(){
+  let timer=null,row=null,sx=0,sy=0,fired=false;
+  function cancel(){clearTimeout(timer);if(row)row.classList.remove('press');row=null;}
+  ['p-list','b-list'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.addEventListener('pointerdown',e=>{
+      const r=e.target.closest('.tx'); if(!r)return;
+      cancel(); fired=false; row=r; sx=e.clientX; sy=e.clientY;
+      timer=setTimeout(()=>{
+        r.classList.remove('press'); fired=true;
+        if(navigator.vibrate)navigator.vibrate(20);
+        openEdit(r.dataset.c,+r.dataset.i); row=null;
+      },500);
+      setTimeout(()=>{if(row===r)r.classList.add('press');},120);
+    });
+    el.addEventListener('pointermove',e=>{if(row&&(Math.abs(e.clientX-sx)>10||Math.abs(e.clientY-sy)>10))cancel();});
+    ['pointerup','pointercancel','pointerleave'].forEach(ev=>el.addEventListener(ev,cancel));
+    el.addEventListener('contextmenu',e=>e.preventDefault());
+  });
+})();
+
 render();
 processRecurrent();
 show('home');
