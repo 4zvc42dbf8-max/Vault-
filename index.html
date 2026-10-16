@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000">
+<title>Vault</title>
+<style>
+:root {
+  --bg:#050505; --glass:rgba(18,18,20,.72); --border:rgba(255,255,255,.08);
+  --text:#f5f5f5; --muted:#8e8e93; --green:#30d158; --red:#ff453a; --accent:#0a84ff;
+}
+html{background:#050505;min-height:100%;-webkit-text-size-adjust:100%}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:16px;line-height:1.4;min-height:calc(100vh + 1px);padding-bottom:calc(90px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;background:rgba(5,5,5,.82);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);padding:calc(16px + env(safe-area-inset-top)) 20px 12px;border-bottom:1px solid var(--border);z-index:50;display:flex;align-items:center;gap:10px}
+.logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#30d158,#0a84ff)}
+header h1{font-size:20px;font-weight:600}
+.container{padding:14px;max-width:500px;margin:0 auto}
+.card{background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px}
+.lbl{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+.big{font-size:34px;font-weight:600;letter-spacing:-.5px}
+.sub{font-size:13px;color:var(--muted)}
+.green{color:var(--green)}.red{color:var(--red)}
+.btn{background:rgba(255,255,255,.08);color:var(--text);border:1px solid var(--border);width:100%;padding:13px;border-radius:12px;font-size:15px;font-weight:500;margin-top:8px}
+.nav{position:fixed;bottom:0;left:0;right:0;background:rgba(10,10,12,.92);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:1px solid var(--border);display:flex;padding:8px 0 max(6px, calc(env(safe-area-inset-bottom) - 18px));z-index:100}
+.nb{flex:1;background:none;border:none;color:var(--muted);font-size:10px;font-weight:500;display:flex;flex-direction:column;align-items:center;gap:4px}
+.nb.on{color:var(--text)}
+.nb svg{width:24px;height:24px}
+.hidden{display:none}
+.tx{display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border)}
+.tx:last-child{border:none}
+.curve{height:8px;background:rgba(255,255,255,.08);border-radius:4px;margin:10px 0;overflow:hidden}
+.curve-fill{height:100%;background:var(--accent);border-radius:4px;transition:width .3s}
+.fab{position:fixed;bottom:calc(70px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;border:none;font-size:26px;color:#fff;z-index:90}
+.fab.plus{right:16px;background:var(--green)}
+.fab.minus{left:16px;background:var(--red)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:none;align-items:flex-end}
+.modal.show{display:flex}
+.modal-box{background:#1c1c1e;width:100%;border-radius:18px 18px 0 0;padding:20px 16px 32px}
+.modal input,.modal select{width:100%;padding:13px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text);margin-bottom:10px;font-size:16px}
+/* ---- Privacy: PIN lock + backup ---- */
+#pv-lock{position:fixed;inset:0;z-index:1000;background:#050505;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;color:var(--text)}
+html.locked #pv-lock,html.covered #pv-lock{display:flex}
+html.covered:not(.locked) #pv-lock>*{visibility:hidden}
+.pv-lk-title{font-size:22px;font-weight:600}
+.pv-lk-sub{font-size:13px;color:var(--muted);min-height:18px;text-align:center}
+.pv-dots{display:flex;gap:16px;margin:8px 0 14px}
+.pv-dots i{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--muted);display:block}
+.pv-dots i.on{background:var(--text);border-color:var(--text)}
+.pv-dots.shake{animation:pvshake .35s}
+@keyframes pvshake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.pv-pad{display:grid;grid-template-columns:repeat(3,76px);gap:14px}
+.pv-pad button{width:76px;height:76px;border-radius:50%;border:1px solid var(--border);background:rgba(255,255,255,.07);color:var(--text);font-size:28px;font-weight:300}
+.pv-pad button:active{background:rgba(255,255,255,.2)}
+.pv-pad .pv-sp{visibility:hidden}
+.pv-link{background:none;border:none;color:var(--muted);font-size:15px;padding:8px}
+.pv-gear{margin-left:auto;width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--muted);display:flex;align-items:center;justify-content:center;padding:0}
+.pv-gear svg{width:20px;height:20px}
+#pv-sheet{position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.6);display:none;align-items:flex-end}
+#pv-sheet.show{display:flex}
+.pv-box{background:#1c1c1e;width:100%;border-radius:18px 18px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));color:var(--text);max-height:90vh;overflow-y:auto}
+.pv-h{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin:14px 0 6px}
+.pv-h:first-child{margin-top:0}
+.pv-note{font-size:13px;color:var(--muted);line-height:1.4;margin-bottom:6px}
+.pv-btn{display:block;width:100%;background:rgba(255,255,255,.08);color:var(--text);border:1px solid var(--border);padding:13px;border-radius:12px;font-size:15px;font-weight:500;margin-top:8px}
+.pv-btn.danger{color:#ff453a}
+</style>
+<script>try{if(localStorage.getItem('pin_vault_hash'))document.documentElement.classList.add('locked')}catch(e){}</script>
+</head>
+<body>
+<div id="pv-lock" role="dialog" aria-modal="true">
+  <div class="pv-lk-title" id="pv-title">Enter PIN</div>
+  <div class="pv-lk-sub" id="pv-sub"></div>
+  <div class="pv-dots" id="pv-dots"><i></i><i></i><i></i><i></i></div>
+  <div class="pv-pad" id="pv-pad"></div>
+  <button class="pv-link" id="pv-cancel" style="display:none">Cancel</button>
+  <button class="pv-link" id="pv-forgot">Forgot PIN?</button>
+</div>
+<div id="pv-sheet">
+  <div class="pv-box">
+    <div class="pv-h">PIN lock</div>
+    <div class="pv-note" id="pv-pinstate"></div>
+    <button class="pv-btn" id="pv-setpin">Set PIN</button>
+    <button class="pv-btn danger" id="pv-rmpin" style="display:none">Remove PIN</button>
+    <div class="pv-h">Backup</div>
+    <div class="pv-note">Your data only lives on this phone. Save a backup file (for example to Files) so you can restore it if the data is ever erased.</div>
+    <button class="pv-btn" id="pv-export">Export backup</button>
+    <button class="pv-btn" id="pv-import">Import backup</button>
+    <input type="file" id="pv-file" accept="application/json,.json" style="display:none">
+    <button class="pv-btn" id="pv-close" style="margin-top:16px">Close</button>
+  </div>
+</div>
+
+<header><div class="logo"></div><h1 id="pt">Vault</h1><button class="pv-gear" id="pv-gear" aria-label="Settings"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/></svg></button></header>
+<div class="container">
+
+<section id="home">
+  <div class="card"><div class="lbl">Total</div><div class="big" id="total">€0.00</div></div>
+  <div class="card"><div class="lbl">Personal</div><div class="big" id="pers">€0.00</div><div class="sub" id="pers-m"></div></div>
+  <div class="card"><div class="lbl">Bank</div><div class="big" id="home-bank">€0.00</div><div class="sub" id="bank-m"></div></div>
+  <div class="card"><div class="lbl">This Month</div><div id="month"></div></div>
+</section>
+
+<section id="personal" class="hidden">
+  <div class="card"><div class="lbl">Personal</div><div class="big" id="p-bal">€0.00</div></div>
+  <div class="card"><div class="lbl">vs Budget</div><div class="curve"><div class="curve-fill" id="p-curve" style="width:0%"></div></div><div class="sub" id="p-info"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <input id="p-budget-input" type="number" placeholder="Budget" style="flex:1;padding:12px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,0.05);color:var(--text)">
+      <button class="btn" style="width:auto;padding:12px 16px;margin:0" onclick="setBudget('personal')">Set</button>
+    </div>
+  </div>
+  <div class="card"><div class="lbl">Activity</div><div id="p-list"></div></div>
+</section>
+
+<section id="bank" class="hidden">
+  <div class="card"><div class="lbl">Bank</div><div class="big" id="b-bal">€0.00</div></div>
+  <div class="card"><div class="lbl">vs Budget</div><div class="curve"><div class="curve-fill" id="b-curve" style="width:0%"></div></div><div class="sub" id="b-info"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <input id="b-budget-input" type="number" placeholder="Budget" style="flex:1;padding:12px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,0.05);color:var(--text)">
+      <button class="btn" style="width:auto;padding:12px 16px;margin:0" onclick="setBudget('bank')">Set</button>
+    </div>
+  </div>
+  <div class="card"><div class="lbl">Activity</div><div id="b-list"></div></div>
+</section>
+
+</div>
+
+<button class="fab minus" id="fab-m" style="display:none" onclick="openModal('minus')">−</button>
+<button class="fab plus" id="fab-p" style="display:none" onclick="openModal('plus')">+</button>
+
+<div id="modal" class="modal" onclick="if(event.target.id==='modal')closeModal()">
+  <div class="modal-box">
+    <div class="lbl" id="m-title">Add</div>
+    <input id="m-amt" type="number" placeholder="Amount" step="0.01">
+    <input id="m-reason" placeholder="Reason">
+    <select id="m-rec"><option value="0">One-time</option><option value="1">Recurrent</option></select>
+    <button class="btn" style="background:var(--accent);color:#fff;border:none" onclick="saveTx()">Save</button>
+    <button class="btn" onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<nav class="nav">
+  <button class="nb on" onclick="show('home')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>Home</button>
+  <button class="nb" onclick="show('personal')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>Personal</button>
+  <button class="nb" onclick="show('bank')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 10v7h3v-7H4zm6 0v7h3v-7h-3zM2 22h19v-3H2v3zm14-12v7h3v-7h-3zM11.5 1L2 6v2h19V6l-9.5-5z"/></svg>Bank</button>
+</nav>
+
+<script>
+let data = JSON.parse(localStorage.vault || '{"personal":{"bal":0,"budget":800,"tx":[]},"bank":{"bal":0,"budget":2000,"tx":[]}}');
+let current = 'personal';
+let mode = 'plus';
+
+function processRecurrent() {
+  const today = new Date();
+  const day = today.getDate();
+  const monthKey = today.toISOString().slice(0,7);
+  if (day !== 1) return;
+  ['personal','bank'].forEach(c => {
+    const last = data[c].lastRecurrent || '';
+    if (last === monthKey) return;
+    data[c].tx.filter(t => t.rec).forEach(t => {
+      data[c].bal += t.a;
+      data[c].tx.push({a: t.a, r: t.r + ' (recurrent)', rec: false, d: today.toISOString().slice(0,10)});
+    });
+    data[c].lastRecurrent = monthKey;
+  });
+  persist();
+}
+function persist(){ localStorage.vault = JSON.stringify(data); }
+function fmt(n){ return (n<0?'−':'')+'€'+Math.abs(n).toFixed(2); }
+
+function show(view){
+  document.querySelectorAll('section').forEach(s=>s.classList.add('hidden'));
+  document.getElementById(view).classList.remove('hidden');
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
+  const map={home:0,personal:1,bank:2};
+  document.querySelectorAll('.nb')[map[view]].classList.add('on');
+  document.getElementById('pt').textContent = view==='home'?'Vault':view[0].toUpperCase()+view.slice(1);
+  const fabs = view!=='home';
+  document.getElementById('fab-p').style.display = fabs?'block':'none';
+  document.getElementById('fab-m').style.display = fabs?'block':'none';
+  if(view!=='home') current = view;
+  render();
+}
+
+function render(){
+  const p=data.personal, b=data.bank;
+  document.getElementById('total').textContent = fmt(p.bal+b.bal);
+  document.getElementById('pers').textContent = fmt(p.bal);
+  document.getElementById('home-bank').textContent = fmt(b.bal);
+  const m=new Date().toISOString().slice(0,7);
+  const pm=p.tx.filter(t=>t.d.startsWith(m)).reduce((s,t)=>s+t.a,0);
+  const bm=b.tx.filter(t=>t.d.startsWith(m)).reduce((s,t)=>s+t.a,0);
+  document.getElementById('pers-m').innerHTML=`<span class="${pm>=0?'green':'red'}">${pm>=0?'+':''}${fmt(pm)} this month</span>`;
+  document.getElementById('bank-m').innerHTML=`<span class="${bm>=0?'green':'red'}">${bm>=0?'+':''}${fmt(bm)} this month</span>`;
+  const gains=Math.max(0,pm)+Math.max(0,bm);
+  const spend=Math.abs(Math.min(0,pm)+Math.min(0,bm));
+  document.getElementById('month').innerHTML=`<span class="green">+${fmt(gains)}</span> · <span class="red">−${fmt(spend)}</span>`;
+
+  ['personal','bank'].forEach(c=>{
+    const d=data[c], pre=c==='personal'?'p':'b';
+    document.getElementById(pre+'-bal').textContent=fmt(d.bal);
+    const spent=Math.abs(d.tx.filter(t=>t.d.startsWith(m)&&t.a<0).reduce((s,t)=>s+t.a,0));
+    const pct = Math.min(100, (spent / (d.budget || 1)) * 100);
+    const curve = document.getElementById(pre + '-curve');
+    if (curve) curve.style.width = pct + '%';
+    document.getElementById(pre + '-info').textContent = `Budget ${fmt(d.budget)} · Spent ${fmt(spent)}`;
+    const input = document.getElementById(pre + '-budget-input');
+    if (input) input.placeholder = 'Budget: ' + fmt(d.budget);
+    document.getElementById(pre+'-list').innerHTML=d.tx.slice().reverse().map(t=>`<div class="tx"><div>${t.r}${t.rec?' · rec':''}</div><div class="${t.a>=0?'green':'red'}">${t.a>=0?'+':'−'}${fmt(Math.abs(t.a))}</div></div>`).join('')||'<div class="sub">No activity</div>';
+  });
+}
+
+function openModal(type){
+  mode = type;
+  document.getElementById('m-title').textContent = type === 'plus' ? 'Add Gain' : 'Add Spending';
+  document.getElementById('m-amt').value = '';
+  document.getElementById('m-reason').value = '';
+  const modal = document.getElementById('modal');
+  modal.classList.add('show');
+  modal.style.display = 'flex';
+}
+function closeModal(){
+  const modal = document.getElementById('modal');
+  modal.classList.remove('show');
+  modal.style.display = 'none';
+}
+
+function saveTx(){
+  const amt = Math.abs(parseFloat(document.getElementById('m-amt').value) || 0);
+  if (!amt) { alert('Enter an amount'); return; }
+  const reason = document.getElementById('m-reason').value.trim() || (mode === 'plus' ? 'Gain' : 'Spending');
+  const rec = document.getElementById('m-rec').value === '1';
+  const signed = mode === 'plus' ? amt : -amt;
+  if (!data[current]) data[current] = {bal:0, budget:800, tx:[]};
+  data[current].bal += signed;
+  data[current].tx.push({a: signed, r: reason, rec: rec, d: new Date().toISOString().slice(0,10)});
+  localStorage.vault = JSON.stringify(data);
+  closeModal();
+  render();
+}
+function setBudget(c) {
+  const input = document.getElementById(c === 'personal' ? 'p-budget-input' : 'b-budget-input');
+  if (!input) { alert('Input not found'); return; }
+  const raw = input.value.trim();
+  const num = parseFloat(raw);
+  if (raw === '' || isNaN(num) || num < 0) { alert('Enter a valid number'); return; }
+  if (!data[c]) data[c] = {bal:0, budget:0, tx:[]};
+  data[c].budget = num;
+  input.value = '';
+  localStorage.vault = JSON.stringify(data);
+  render();
+  alert('Budget set to €' + num.toFixed(2));
+}
+render();
+processRecurrent();
+show('home');
+</script>
+<script>
+(function(){
+  var APP='vault', KEYS=['vault'], K='pin_'+APP+'_';
+  var root=document.documentElement;
+  function $(id){return document.getElementById(id);}
+  function get(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+  function set(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+  function del(k){try{localStorage.removeItem(k);}catch(e){}}
+  function has(){return !!get(K+'hash');}
+
+  async function hash(pin,salt){
+    var s=salt+':'+pin;
+    if(window.crypto&&crypto.subtle){
+      var d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
+      return Array.from(new Uint8Array(d)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+    }
+    var h=5381; for(var i=0;i<s.length;i++){h=((h<<5)+h+s.charCodeAt(i))|0;} return 'x'+h;
+  }
+  function rnd(){var a=new Uint8Array(16);(window.crypto||{getRandomValues:function(x){for(var i=0;i<x.length;i++)x[i]=Math.random()*256;}}).getRandomValues(a);return Array.from(a).map(function(b){return b.toString(16).padStart(2,'0');}).join('');}
+
+  /* ---------- keypad ---------- */
+  var entry='', handler=null, mode='unlock', timer=null;
+  var title=$('pv-title'), sub=$('pv-sub'), dots=$('pv-dots'), pad=$('pv-pad'), cancelB=$('pv-cancel'), forgotB=$('pv-forgot');
+  ['1','2','3','4','5','6','7','8','9','','0','⌫'].forEach(function(k){
+    var b=document.createElement('button');
+    if(k===''){b.className='pv-sp';b.disabled=true;}
+    else{b.textContent=k;b.addEventListener('click',function(){key(k);});}
+    pad.appendChild(b);
+  });
+  function drawDots(){Array.from(dots.children).forEach(function(d,i){d.className=i<entry.length?'on':'';});}
+  function lockedOut(){var u=+get(K+'until')||0;return u>Date.now()?Math.ceil((u-Date.now())/1000):0;}
+  function countdown(){
+    clearInterval(timer);
+    var s=lockedOut(); if(!s)return;
+    sub.textContent='Too many tries. Wait '+s+'s';
+    timer=setInterval(function(){var r=lockedOut(); if(!r){clearInterval(timer);sub.textContent='';}else sub.textContent='Too many tries. Wait '+r+'s';},500);
+  }
+  function key(k){
+    if(lockedOut())return;
+    if(k==='⌫'){entry=entry.slice(0,-1);drawDots();return;}
+    if(entry.length>=4)return;
+    entry+=k; drawDots();
+    if(entry.length===4){
+      var e=entry;
+      setTimeout(function(){entry='';drawDots();if(handler)handler(e);},120);
+    }
+  }
+  function showPad(t,s,cancellable,fn,m){
+    mode=m||'other'; title.textContent=t; sub.textContent=s||''; entry=''; drawDots(); handler=fn;
+    cancelB.style.display=cancellable?'':'none';
+    forgotB.style.display=(mode==='unlock')?'':'none';
+    root.classList.add('locked');
+    if(mode==='unlock')countdown();
+  }
+  function hidePad(){clearInterval(timer);root.classList.remove('locked');}
+  function wrong(msg){dots.classList.remove('shake');void dots.offsetWidth;dots.classList.add('shake');sub.textContent=msg||'';if(navigator.vibrate)navigator.vibrate(60);}
+  async function check(p){return (await hash(p,get(K+'salt')||''))===get(K+'hash');}
+
+  function lock(){
+    if(!has())return;
+    showPad('Enter PIN','',false,async function(p){
+      if(lockedOut())return;
+      if(await check(p)){del(K+'fails');del(K+'until');hidePad();return;}
+      var f=(+get(K+'fails')||0)+1; set(K+'fails',f);
+      if(f>=5){set(K+'until',Date.now()+30000*(f-4));wrong('');countdown();}
+      else wrong('Wrong PIN ('+(5-f)+' tries left before a pause)');
+    },'unlock');
+  }
+  cancelB.addEventListener('click',hidePad);
+  forgotB.addEventListener('click',function(){
+    if(confirm('Forgot your PIN?\n\nThe only way back in is to erase this app\'s data on this phone. You can then restore it from a backup file.\n\nErase everything?')){
+      KEYS.forEach(del);
+      ['hash','salt','fails','until'].forEach(function(s){del(K+s);});
+      location.reload();
+    }
+  });
+
+  /* ---------- PIN management ---------- */
+  function newPin(){
+    showPad('Choose a PIN','4 digits',true,function(p1){
+      showPad('Confirm PIN','',true,async function(p2){
+        if(p1!==p2){wrong('PINs did not match, try again');setTimeout(newPin,900);return;}
+        var salt=rnd(); set(K+'salt',salt); set(K+'hash',await hash(p1,salt)); del(K+'fails'); del(K+'until');
+        hidePad(); refresh();
+      });
+    });
+  }
+  function verifyThen(next){
+    showPad('Enter current PIN','',true,async function(p){
+      if(await check(p)){hidePad();next();}
+      else wrong('Wrong PIN');
+    });
+  }
+  function removePin(){
+    ['hash','salt','fails','until'].forEach(function(s){del(K+s);});
+    refresh();
+  }
+  var sheet=$('pv-sheet'), setB=$('pv-setpin'), rmB=$('pv-rmpin'), stateEl=$('pv-pinstate');
+  function refresh(){
+    if(has()){stateEl.textContent='PIN is on. The app locks after 30 seconds away.';setB.textContent='Change PIN';rmB.style.display='';}
+    else{stateEl.textContent='No PIN set. Anyone who opens this app can see your data.';setB.textContent='Set PIN';rmB.style.display='none';}
+  }
+  setB.addEventListener('click',function(){if(has())verifyThen(newPin);else newPin();});
+  rmB.addEventListener('click',function(){verifyThen(function(){if(confirm('Remove the PIN lock?'))removePin();});});
+  $('pv-gear').addEventListener('click',function(){refresh();sheet.classList.add('show');});
+  $('pv-close').addEventListener('click',function(){sheet.classList.remove('show');});
+  sheet.addEventListener('click',function(e){if(e.target===sheet)sheet.classList.remove('show');});
+
+  /* ---------- backup ---------- */
+  var busy=false, busyT=null;
+  function setBusy(ms){busy=true;clearTimeout(busyT);busyT=setTimeout(function(){busy=false;},ms||120000);}
+  function clearBusy(){busy=false;clearTimeout(busyT);}
+  $('pv-export').addEventListener('click',async function(){
+    var out={app:APP,version:1,exported:new Date().toISOString(),data:{}};
+    KEYS.forEach(function(k){var v=get(k);if(v!==null)out.data[k]=v;});
+    var json=JSON.stringify(out), name=APP+'-backup-'+new Date().toISOString().slice(0,10)+'.json';
+    setBusy();
+    try{
+      var file=new File([json],name,{type:'application/json'});
+      if(navigator.canShare&&navigator.canShare({files:[file]})){
+        try{await navigator.share({files:[file],title:name});clearBusy();return;}
+        catch(e){if(e&&e.name==='AbortError'){clearBusy();return;}}
+      }
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));
+      a.download=name; document.body.appendChild(a); a.click(); a.remove();
+    }catch(e){alert('Could not export: '+e.message);}
+    setTimeout(clearBusy,3000);
+  });
+  var fileIn=$('pv-file');
+  $('pv-import').addEventListener('click',function(){setBusy();fileIn.value='';fileIn.click();});
+  fileIn.addEventListener('cancel',clearBusy);
+  fileIn.addEventListener('change',function(){
+    clearBusy();
+    var f=fileIn.files&&fileIn.files[0]; if(!f)return;
+    var r=new FileReader();
+    r.onload=function(){
+      var o; try{o=JSON.parse(r.result);}catch(e){alert('This file is not a valid backup.');return;}
+      if(!o||o.app!==APP||!o.data||typeof o.data!=='object'){alert('This backup is not for this app.');return;}
+      if(!confirm('Replace ALL current data in this app with the backup from '+(o.exported||'unknown date').slice(0,10)+'?'))return;
+      KEYS.forEach(del);
+      Object.keys(o.data).forEach(function(k){if(KEYS.indexOf(k)>-1&&typeof o.data[k]==='string')set(k,o.data[k]);});
+      location.reload();
+    };
+    r.readAsText(f);
+  });
+
+  /* ---------- auto-lock + app-switcher privacy cover ---------- */
+  var hiddenAt=0;
+  document.addEventListener('visibilitychange',function(){
+    if(!has())return;
+    if(document.hidden){
+      if(busy)return;
+      hiddenAt=Date.now(); root.classList.add('covered');
+    }else{
+      root.classList.remove('covered');
+      if(hiddenAt&&Date.now()-hiddenAt>30000&&!root.classList.contains('locked'))lock();
+      hiddenAt=0;
+    }
+  });
+
+  if(has())lock();
+  refresh();
+})();
+</script>
+</body>
+</html>
