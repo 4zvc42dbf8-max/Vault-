@@ -7,6 +7,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#000000">
 <title>Vault</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="apple-mobile-web-app-title" content="Vault">
 <style>
 :root {
   --bg:#050505; --glass:rgba(18,18,20,.72); --border:rgba(255,255,255,.08);
@@ -424,5 +428,6 @@ show('home');
   refresh();
 })();
 </script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){try{navigator.serviceWorker.register('./sw.js').catch(function(){});}catch(e){}});}</script>
 </body>
 </html>
